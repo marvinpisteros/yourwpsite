@@ -64,7 +64,10 @@ final class YWPSA_Settings
         $current_home_url = home_url('/');
         $current_site_url = site_url('/');
 
-        if (
+        if (self::should_reset_for_legacy_snapshot($settings, $current_home_url, $current_site_url)) {
+            $settings = self::reset_for_new_site($settings);
+            $updated = true;
+        } elseif (
             $settings['bootstrap_home_url'] !== ''
             && $settings['bootstrap_site_url'] !== ''
             && (
@@ -201,8 +204,16 @@ final class YWPSA_Settings
     {
         return array(
             'site.read_public_content_index',
+            'site.export_structure',
             'content.create_page',
             'content.update_page',
+            'content.create_post',
+            'content.update_post',
+            'content.trash_page',
+            'content.trash_post',
+            'media.upload_from_control_plane',
+            'menu.upsert',
+            'media.attach_featured_image',
         );
     }
 
@@ -280,5 +291,29 @@ final class YWPSA_Settings
         $settings['recent_commands'] = array();
 
         return $settings;
+    }
+
+    private static function should_reset_for_legacy_snapshot($settings, $current_home_url, $current_site_url)
+    {
+        if ($settings['bootstrap_home_url'] !== '' || $settings['bootstrap_site_url'] !== '') {
+            return false;
+        }
+
+        if ($settings['agent_local_id'] === '') {
+            return false;
+        }
+
+        if ($settings['mode'] === 'managed' && $settings['site_id'] !== '' && $settings['agent_id'] !== '') {
+            return false;
+        }
+
+        $current_home_host = wp_parse_url($current_home_url, PHP_URL_HOST);
+        $current_site_host = wp_parse_url($current_site_url, PHP_URL_HOST);
+
+        if ($current_home_host === '' || $current_site_host === '') {
+            return false;
+        }
+
+        return true;
     }
 }

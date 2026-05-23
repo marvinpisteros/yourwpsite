@@ -7,6 +7,8 @@ Architectuur- en MVP-documentatie voor een veilige WordPress site-agent die met 
 - `docs/REMOTE_WORDPRESS_AGENT_ARCHITECTURE.md`
 - `docs/VARIANT_A_ONBOARDING_MVP.md`
 - `docs/CENTRAL_APP_PHASE1_AGENT_BRIEF.md`
+- `docs/CENTRAL_APP_PHASE3_AGENT_BRIEF.md`
+- `docs/CENTRAL_APP_PHASE3_TEST_INSTRUCTIONS.md`
 
 ## Code
 

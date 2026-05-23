@@ -3,7 +3,7 @@
  * Plugin Name: yourWPsite Agent
  * Plugin URI: https://dev.yoursitehulp.nl/yourwpsite
  * Description: Secure site agent for connecting a WordPress site to the yourWPsite control plane.
- * Version: 0.1.2
+ * Version: 0.2.0
  * Author: yoursitehulp.nl
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -22,7 +22,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-ywpsa-admin.php';
 
 final class YourWPsite_Agent
 {
-    const VERSION = '0.1.2';
+    const VERSION = '0.2.0';
     const OPTION_KEY = 'ywpsa_settings';
     const DISCOVERY_HOOK = 'ywpsa_run_discovery';
     const HEARTBEAT_HOOK = 'ywpsa_run_heartbeat';
@@ -32,6 +32,7 @@ final class YourWPsite_Agent
     public static function init()
     {
         add_filter('cron_schedules', array(__CLASS__, 'register_schedules'));
+        add_action('init', array('YWPSA_Discovery', 'maybe_run_on_request'));
         add_action('admin_init', array('YWPSA_Settings', 'register'));
         add_action('admin_menu', array('YWPSA_Admin', 'register_page'));
         add_action('admin_notices', array('YWPSA_Admin', 'render_notice'));

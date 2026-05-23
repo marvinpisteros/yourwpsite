@@ -6,6 +6,37 @@ if (! defined('ABSPATH')) {
 
 final class YWPSA_Discovery
 {
+    const REQUEST_LOCK_KEY = 'ywpsa_discovery_request_lock';
+
+    public static function maybe_run_on_request()
+    {
+        if (wp_doing_cron() || wp_doing_ajax()) {
+            return;
+        }
+
+        YWPSA_Settings::ensure_bootstrap();
+
+        $settings = YWPSA_Settings::get();
+
+        if ($settings['mode'] === 'managed' && $settings['site_id'] !== '' && $settings['agent_id'] !== '') {
+            return;
+        }
+
+        $last_discovery = $settings['last_discovery_at'] ? strtotime((string) $settings['last_discovery_at'] . ' UTC') : 0;
+
+        if ($last_discovery > 0 && (time() - $last_discovery) < 300) {
+            return;
+        }
+
+        if (get_transient(self::REQUEST_LOCK_KEY)) {
+            return;
+        }
+
+        set_transient(self::REQUEST_LOCK_KEY, 1, MINUTE_IN_SECONDS);
+        self::run();
+        delete_transient(self::REQUEST_LOCK_KEY);
+    }
+
     public static function run()
     {
         YWPSA_Settings::ensure_bootstrap();

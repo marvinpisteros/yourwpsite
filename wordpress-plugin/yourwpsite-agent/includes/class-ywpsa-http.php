@@ -16,16 +16,61 @@ final class YWPSA_Http
         return self::request('GET', $path, $query, $token);
     }
 
-    private static function request($method, $path, $payload, $token)
+    public static function download_file($path, $query = array(), $token = '')
     {
-        $settings = YWPSA_Settings::get();
-        $base_url = untrailingslashit($settings['control_plane_base_url']);
+        $url = self::build_url($path, $query);
 
-        if ($base_url === '') {
-            return new WP_Error('ywpsa_missing_base_url', 'Missing control plane base URL.');
+        if (is_wp_error($url)) {
+            return $url;
         }
 
-        $url = $base_url . '/' . ltrim($path, '/');
+        $temp_file = wp_tempnam('ywpsa-download');
+
+        if (! $temp_file) {
+            return new WP_Error('ywpsa_temp_file_failed', 'Failed to allocate a temporary download file.');
+        }
+
+        $args = array(
+            'method' => 'GET',
+            'timeout' => 60,
+            'redirection' => 0,
+            'sslverify' => true,
+            'stream' => true,
+            'filename' => $temp_file,
+            'headers' => array(
+                'Accept' => '*/*',
+            ),
+        );
+
+        if ($token !== '') {
+            $args['headers']['Authorization'] = 'Bearer ' . $token;
+        }
+
+        $response = wp_remote_get($url, $args);
+
+        if (is_wp_error($response)) {
+            if (file_exists($temp_file)) {
+                wp_delete_file($temp_file);
+            }
+
+            return $response;
+        }
+
+        return array(
+            'status_code' => (int) wp_remote_retrieve_response_code($response),
+            'headers' => wp_remote_retrieve_headers($response),
+            'file_path' => $temp_file,
+        );
+    }
+
+    private static function request($method, $path, $payload, $token)
+    {
+        $url = self::build_url($path, $method === 'GET' ? $payload : array());
+
+        if (is_wp_error($url)) {
+            return $url;
+        }
+
         $args = array(
             'method' => $method,
             'timeout' => 20,
@@ -40,11 +85,7 @@ final class YWPSA_Http
             $args['headers']['Authorization'] = 'Bearer ' . $token;
         }
 
-        if ($method === 'GET') {
-            if (! empty($payload)) {
-                $url = add_query_arg($payload, $url);
-            }
-        } else {
+        if ($method !== 'GET') {
             $args['headers']['Content-Type'] = 'application/json';
             $args['body'] = wp_json_encode($payload);
         }
@@ -67,5 +108,23 @@ final class YWPSA_Http
             'body' => $decoded,
             'raw_body' => $body,
         );
+    }
+
+    private static function build_url($path, $query = array())
+    {
+        $settings = YWPSA_Settings::get();
+        $base_url = untrailingslashit($settings['control_plane_base_url']);
+
+        if ($base_url === '') {
+            return new WP_Error('ywpsa_missing_base_url', 'Missing control plane base URL.');
+        }
+
+        $url = $base_url . '/' . ltrim($path, '/');
+
+        if (! empty($query)) {
+            $url = add_query_arg($query, $url);
+        }
+
+        return $url;
     }
 }

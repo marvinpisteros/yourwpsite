@@ -10,7 +10,7 @@ final class YWPSA_Heartbeat
     {
         $settings = YWPSA_Settings::get();
 
-        if ($settings['mode'] !== 'managed' || $settings['access_token'] === '' || $settings['site_id'] === '' || $settings['agent_id'] === '') {
+        if ($settings['mode'] !== 'managed' || $settings['access_token'] === '') {
             return;
         }
 
