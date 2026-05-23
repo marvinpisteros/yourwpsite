@@ -109,12 +109,21 @@ final class YWPSA_Settings
 
     public static function get()
     {
-        return wp_parse_args(get_option(YourWPsite_Agent::OPTION_KEY, array()), self::defaults());
+        $settings = wp_parse_args(get_option(YourWPsite_Agent::OPTION_KEY, array()), self::defaults());
+        $normalized_base_url = self::sanitize_base_url($settings['control_plane_base_url'] ?? '');
+
+        if (($settings['control_plane_base_url'] ?? '') !== $normalized_base_url) {
+            $settings['control_plane_base_url'] = $normalized_base_url;
+            update_option(YourWPsite_Agent::OPTION_KEY, $settings, false);
+        }
+
+        return $settings;
     }
 
     public static function update($changes)
     {
         $settings = array_merge(self::get(), $changes);
+        $settings['control_plane_base_url'] = self::sanitize_base_url($settings['control_plane_base_url'] ?? '');
         update_option(YourWPsite_Agent::OPTION_KEY, $settings, false);
     }
 
