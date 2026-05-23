@@ -24,6 +24,8 @@ final class YWPSA_Http
             return $url;
         }
 
+        self::ensure_file_functions_loaded();
+
         $temp_file = wp_tempnam('ywpsa-download');
 
         if (! $temp_file) {
@@ -126,5 +128,12 @@ final class YWPSA_Http
         }
 
         return $url;
+    }
+
+    private static function ensure_file_functions_loaded()
+    {
+        if (! function_exists('wp_tempnam') || ! function_exists('wp_delete_file')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
     }
 }
