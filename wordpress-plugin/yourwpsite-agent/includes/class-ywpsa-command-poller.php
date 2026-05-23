@@ -82,6 +82,12 @@ final class YWPSA_Command_Poller
                 case 'site.export_structure':
                     $result = self::export_structure();
                     break;
+                case 'site.set_homepage':
+                    $result = self::set_homepage($command['payload'] ?? array());
+                    break;
+                case 'site.set_posts_page':
+                    $result = self::set_posts_page($command['payload'] ?? array());
+                    break;
                 case 'content.create_page':
                     $result = self::create_content($command['payload'] ?? array(), 'page');
                     break;
@@ -232,6 +238,73 @@ final class YWPSA_Command_Poller
                 'posts' => count($posts),
                 'menus' => count($menus),
             ),
+        );
+    }
+
+    private static function set_homepage($payload)
+    {
+        $page_id = self::extract_page_id($payload);
+
+        if ($page_id < 1) {
+            throw new RuntimeException('Missing homepage page_id.');
+        }
+
+        $page = get_post($page_id);
+
+        if (! $page || $page->post_type !== 'page') {
+            throw new RuntimeException('Homepage target page not found.');
+        }
+
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $page_id);
+
+        $posts_page_id = absint(get_option('page_for_posts', 0));
+        if ($posts_page_id === $page_id) {
+            update_option('page_for_posts', 0);
+            $posts_page_id = 0;
+        }
+
+        return array(
+            'page_id' => (int) $page_id,
+            'show_on_front' => (string) get_option('show_on_front', 'posts'),
+            'front_page_url' => home_url('/'),
+            'posts_page_id' => (int) $posts_page_id,
+        );
+    }
+
+    private static function set_posts_page($payload)
+    {
+        $clear = ! empty($payload['clear']);
+        $page_id = self::extract_page_id($payload);
+
+        if ($clear || $page_id < 1) {
+            update_option('page_for_posts', 0);
+
+            return array(
+                'page_id' => 0,
+                'posts_page_url' => '',
+                'show_on_front' => (string) get_option('show_on_front', 'posts'),
+            );
+        }
+
+        $page = get_post($page_id);
+
+        if (! $page || $page->post_type !== 'page') {
+            throw new RuntimeException('Posts page target not found.');
+        }
+
+        $front_page_id = absint(get_option('page_on_front', 0));
+        if ($front_page_id === $page_id) {
+            throw new RuntimeException('Posts page cannot be the same as the homepage.');
+        }
+
+        update_option('page_for_posts', $page_id);
+
+        return array(
+            'page_id' => (int) $page_id,
+            'posts_page_url' => get_permalink($page_id),
+            'show_on_front' => (string) get_option('show_on_front', 'posts'),
+            'front_page_id' => (int) $front_page_id,
         );
     }
 
@@ -591,6 +664,11 @@ final class YWPSA_Command_Poller
         if (! in_array($post_type, array('page', 'post'), true)) {
             throw new RuntimeException('Unsupported post type.');
         }
+    }
+
+    private static function extract_page_id($payload)
+    {
+        return absint($payload['page_id'] ?? $payload['page_ref']['id'] ?? 0);
     }
 
     private static function fetch_structure_posts($post_type)

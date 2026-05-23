@@ -30,6 +30,8 @@ Deze map bevat de eerste MVP-plugin voor de `yourWPsite` site-agent.
 ## Fase 3 capabilities
 
 - `site.export_structure`
+- `site.set_homepage`
+- `site.set_posts_page`
 - `content.create_post`
 - `content.update_post`
 - `content.trash_page`
