@@ -82,6 +82,9 @@ final class YWPSA_Command_Poller
                 case 'site.export_structure':
                     $result = self::export_structure();
                     break;
+                case 'site.apply_theme':
+                    $result = self::apply_theme($command['payload'] ?? array());
+                    break;
                 case 'site.set_homepage':
                     $result = self::set_homepage($command['payload'] ?? array());
                     break;
@@ -269,6 +272,75 @@ final class YWPSA_Command_Poller
             'show_on_front' => (string) get_option('show_on_front', 'posts'),
             'front_page_url' => home_url('/'),
             'posts_page_id' => (int) $posts_page_id,
+        );
+    }
+
+    private static function apply_theme($payload)
+    {
+        $theme_slug = sanitize_key((string) ($payload['theme_slug'] ?? ''));
+        $supported_themes = array(
+            'astra' => array(
+                'name' => 'Astra',
+                'download_url' => 'https://downloads.wordpress.org/theme/astra.latest-stable.zip',
+            ),
+            'kadence' => array(
+                'name' => 'Kadence',
+                'download_url' => 'https://downloads.wordpress.org/theme/kadence.latest-stable.zip',
+            ),
+            'twentytwentyfive' => array(
+                'name' => 'Twenty Twenty-Five',
+                'download_url' => 'https://downloads.wordpress.org/theme/twentytwentyfive.latest-stable.zip',
+            ),
+        );
+
+        if ($theme_slug === '' || ! isset($supported_themes[$theme_slug])) {
+            throw new RuntimeException('Unsupported or missing theme_slug.');
+        }
+
+        $theme_info = $supported_themes[$theme_slug];
+        $installed_theme = wp_get_theme($theme_slug);
+
+        if (! $installed_theme->exists()) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/misc.php';
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+            require_once ABSPATH . 'wp-admin/includes/theme.php';
+
+            $upgrader = new Theme_Upgrader(new WP_Ajax_Upgrader_Skin());
+            $install_result = $upgrader->install($theme_info['download_url']);
+
+            if (is_wp_error($install_result)) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Theme installation failed for %s: %s',
+                        $theme_slug,
+                        $install_result->get_error_message()
+                    )
+                );
+            }
+
+            if ($install_result !== true) {
+                throw new RuntimeException('Theme installation did not complete successfully.');
+            }
+
+            $installed_theme = wp_get_theme($theme_slug);
+        }
+
+        if (! $installed_theme->exists()) {
+            throw new RuntimeException('Theme is still missing after installation attempt.');
+        }
+
+        switch_theme($theme_slug);
+        $active_theme = wp_get_theme();
+
+        if ($active_theme->get_stylesheet() !== $theme_slug) {
+            throw new RuntimeException('Theme activation failed.');
+        }
+
+        return array(
+            'success' => true,
+            'theme' => $theme_slug,
+            'name' => $active_theme->get('Name') !== '' ? $active_theme->get('Name') : $theme_info['name'],
         );
     }
 

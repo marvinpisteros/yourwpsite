@@ -214,6 +214,7 @@ final class YWPSA_Settings
         return array(
             'site.read_public_content_index',
             'site.export_structure',
+            'site.apply_theme',
             'site.set_homepage',
             'site.set_posts_page',
             'content.create_page',
